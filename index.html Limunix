@@ -1,0 +1,415 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liminux</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 18px;
+  background: #111116;
+  color: white;
+  font-family: sans-serif;
+}
+
+header {
+  text-align: center;
+  padding: 25px 0;
+}
+
+h1 { color: #c7a7ff; }
+
+.box, .post {
+  background: #20202a;
+  border: 1px solid #353440;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+h3 { color: #c7a7ff; }
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+  background: #30303b;
+  color: white;
+  border: 1px solid #45404f;
+  border-radius: 10px;
+}
+
+textarea {
+  height: 110px;
+}
+
+button {
+  background: #c7a7ff;
+  color: #17121f;
+  border: none;
+  padding: 11px 18px;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.secondary {
+  background: #393344;
+  color: white;
+}
+
+.hidden { display: none; }
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: #493866;
+  display: grid;
+  place-items: center;
+  color: #e1ceff;
+  font-size: 23px;
+}
+
+.post p {
+  white-space: pre-wrap;
+  line-height: 2;
+}
+
+.post img {
+  width: 100%;
+  border-radius: 12px;
+}
+
+small { color: #aaa5b5; }
+
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>𝗟𝗶𝗺𝘂𝗻𝗶𝘅 ✦</h1>
+  <small>Your words. Your world.</small>
+</header>
+
+<!-- LOGIN -->
+
+<div id="auth">
+
+  <div class="box">
+
+    <h3 id="formTitle">خوش اومدی به Liminux!</h3>
+
+    <input id="username"
+    placeholder="نام کاربری">
+
+    <input id="password"
+    type="password"
+    placeholder="رمز آزمایشی">
+
+    <button onclick="enterSite()"
+    id="mainButton">ورود</button>
+
+    <p id="switchText">
+      حساب نداری؟
+      <button class="secondary"
+      onclick="switchForm()">ثبت‌نام</button>
+    </p>
+
+    <small>
+      نسخه آزمایشی؛ رمز عبور ذخیره نمی‌شود.
+      از رمز واقعی استفاده نکن.
+    </small>
+
+    <p id="error"></p>
+
+  </div>
+
+</div>
+
+<!-- MAIN WEBSITE -->
+
+<div id="website" class="hidden">
+
+  <div class="box">
+
+    <div class="profile">
+      <div class="avatar" id="avatar">L</div>
+
+      <div>
+        <strong id="profileName"></strong>
+        <br>
+        <small>عضو Liminux</small>
+      </div>
+    </div>
+
+    <button class="secondary"
+    onclick="logout()">خروج از حساب</button>
+
+  </div>
+
+  <div class="box">
+
+    <h3>نوشته جدید ✨</h3>
+
+    <textarea id="content"
+    placeholder="چه چیزی در ذهنته؟"></textarea>
+
+    <input type="file" id="image"
+    accept="image/*">
+
+    <button onclick="publish()">انتشار</button>
+
+  </div>
+
+  <h3>نوشته‌های کاربران</h3>
+
+  <div id="posts"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+const SUPABASE_URL = "https://kqyhxwnzyrjbapoluptv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HuuavrJ7PqnMFRaSxQ9PTw_BKNIkh-M";
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+// آزمایش ثبت نام و ورود
+
+let isSignup = false;
+
+let currentUser =
+localStorage.getItem("limunix_user") || "";
+
+function switchForm() {
+
+  isSignup = !isSignup;
+
+  document.getElementById("formTitle").textContent =
+  isSignup ? "ساخت حساب جدید" : "خوش اومدی به Liminux!";
+
+  document.getElementById("mainButton").textContent =
+  isSignup ? "ثبت‌نام" : "ورود";
+
+  document.getElementById("switchText").innerHTML =
+  isSignup
+  ? 'حساب داری؟ <button class="secondary" onclick="switchForm()">ورود</button>'
+  : 'حساب نداری؟ <button class="secondary" onclick="switchForm()">ثبت‌نام</button>';
+
+  document.getElementById("error").textContent = "";
+}
+
+function enterSite() {
+
+  const name =
+  document.getElementById("username").value.trim();
+
+  const password =
+  document.getElementById("password").value;
+
+  if (!name || !password) {
+    document.getElementById("error").textContent =
+    "نام کاربری و رمز آزمایشی را وارد کن.";
+    return;
+  }
+
+  if (name.length < 3) {
+    document.getElementById("error").textContent =
+    "نام کاربری حداقل ۳ حرف باشد.";
+    return;
+  }
+
+  currentUser = name;
+
+  // فقط نام کاربری ذخیره می‌شود.
+  // رمز عبور ذخیره نمی‌شود.
+
+  localStorage.setItem("limunix_user", name);
+
+  showWebsite();
+}
+
+function showWebsite() {
+
+  document.getElementById("auth").classList.add("hidden");
+
+  document.getElementById("website").classList.remove("hidden");
+
+  document.getElementById("profileName").textContent =
+  currentUser;
+
+  document.getElementById("avatar").textContent =
+  currentUser.charAt(0).toUpperCase();
+
+  render();
+}
+
+function logout() {
+
+  localStorage.removeItem("limunix_user");
+
+  currentUser = "";
+
+  document.getElementById("website").classList.add("hidden");
+
+  document.getElementById("auth").classList.remove("hidden");
+
+  document.getElementById("password").value = "";
+}
+
+// نوشته ها
+
+let savedPosts = JSON.parse(
+  localStorage.getItem("limunix_posts") || "[]"
+);
+
+function save() {
+
+  localStorage.setItem(
+    "limunix_posts",
+    JSON.stringify(savedPosts)
+  );
+
+}
+
+function publish() {
+
+  const text =
+  document.getElementById("content").value.trim();
+
+  const file =
+  document.getElementById("image").files[0];
+
+  if (!text && !file) {
+    alert("یک متن یا عکس اضافه کن!");
+    return;
+  }
+
+  if (file && file.size > 800000) {
+    alert("حجم عکس باید کمتر از ۸۰۰ کیلوبایت باشد.");
+    return;
+  }
+
+  function finish(imageData) {
+
+    savedPosts.unshift({
+      text: text,
+      image: imageData,
+      author: currentUser,
+      likes: 0,
+      date: new Date().toLocaleDateString("fa-IR")
+    });
+
+    try {
+      save();
+    } catch(e) {
+      savedPosts.shift();
+      alert("فضای ذخیره‌سازی کافی نیست.");
+      return;
+    }
+
+    document.getElementById("content").value = "";
+    document.getElementById("image").value = "";
+
+    render();
+  }
+
+  if (file) {
+
+    const reader = new FileReader();
+
+    reader.onload = () => finish(reader.result);
+
+    reader.readAsDataURL(file);
+
+  } else {
+
+    finish(null);
+
+  }
+
+}
+
+function render() {
+
+  const area = document.getElementById("posts");
+
+  area.innerHTML = "";
+
+  savedPosts.forEach((post, index) => {
+
+    const card = document.createElement("div");
+
+    card.className = "post";
+
+    const author = document.createElement("small");
+    author.textContent = "@" + (post.author || "کاربر");
+
+    const text = document.createElement("p");
+    text.textContent = post.text;
+
+    card.appendChild(author);
+    card.appendChild(text);
+
+    if (post.image) {
+
+      const img = document.createElement("img");
+
+      img.src = post.image;
+
+      card.appendChild(img);
+
+    }
+
+    const date = document.createElement("small");
+    date.textContent = post.date || "";
+
+    card.appendChild(date);
+
+    const like = document.createElement("button");
+
+    like.textContent = "♥ " + post.likes;
+
+    like.onclick = () => {
+
+      savedPosts[index].likes++;
+
+      save();
+
+      render();
+
+    };
+
+    card.appendChild(like);
+
+    area.appendChild(card);
+
+  });
+
+}
+
+// نمایش اولیه
+
+if (currentUser) {
+  showWebsite();
+}
+
+</script>
+
+</body>
+</html>
